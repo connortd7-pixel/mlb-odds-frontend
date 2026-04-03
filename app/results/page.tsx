@@ -19,7 +19,7 @@ function formatDate(daysAgo = 1) {
   });
 }
 
-function HitBadge({ hit, label }) {
+function HitBadge({ hit, label }: { hit: boolean | null | undefined; label: string }) {
   if (hit === null || hit === undefined) return <span className="badge unknown">N/A</span>;
   return (
     <span className={`badge ${hit ? "hit" : "miss"}`}>

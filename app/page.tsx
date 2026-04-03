@@ -18,17 +18,17 @@ const BOOKMAKER_LABELS = {
   caesars: "Caesars",
 };
 
-function formatOdds(val) {
+function formatOdds(val: number | null | undefined) {
   if (val == null) return "—";
   return val > 0 ? `+${val}` : `${val}`;
 }
 
-function formatSpread(val) {
+function formatSpread(val: number | null | undefined) {
   if (val == null) return "—";
   return val > 0 ? `+${val}` : `${val}`;
 }
 
-function formatTime(iso) {
+function formatTime(iso: string | null | undefined) {
   if (!iso) return "";
   const d = new Date(iso);
   return d.toLocaleTimeString("en-US", {
@@ -39,8 +39,8 @@ function formatTime(iso) {
   });
 }
 
-function getBestML(oddsMap, team) {
-  let best = null;
+function getBestML(oddsMap: Record<string, Record<string, number>>, team: string) {
+  let best: number | null = null;
   for (const book of BOOKMAKERS) {
     const val = oddsMap[book]?.[team === "home" ? "ml_home" : "ml_away"];
     if (val != null && (best === null || val > best)) best = val;
@@ -48,9 +48,9 @@ function getBestML(oddsMap, team) {
   return best;
 }
 
-function getBestSpread(oddsMap, side) {
+function getBestSpread(oddsMap: Record<string, Record<string, number>>, side: string) {
   // Best spread price for a given side
-  let best = null;
+  let best: number | null = null;
   for (const book of BOOKMAKERS) {
     const val =
       oddsMap[book]?.[
