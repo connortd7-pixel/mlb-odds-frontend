@@ -219,27 +219,15 @@ export default function Home() {
                                 <td className="book-name">
                                   {BOOKMAKER_LABELS[book]}
                                 </td>
-                                <td
-                                  className={
-                                    o.spread_away_price === bestAwaySpread
-                                      ? "best"
-                                      : ""
-                                  }
-                                >
+                                <td>
                                   {formatSpread(o.spread_away)}{" "}
-                                  <span className="juice">
+                                  <span className={o.spread_away_price === bestAwaySpread ? "juice best" : "juice"}>
                                     ({formatOdds(o.spread_away_price)})
                                   </span>
                                 </td>
-                                <td
-                                  className={
-                                    o.spread_home_price === bestHomeSpread
-                                      ? "best"
-                                      : ""
-                                  }
-                                >
+                                <td>
                                   {formatSpread(o.spread_home)}{" "}
-                                  <span className="juice">
+                                  <span className={o.spread_home_price === bestHomeSpread ? "juice best" : "juice"}>
                                     ({formatOdds(o.spread_home_price)})
                                   </span>
                                 </td>
