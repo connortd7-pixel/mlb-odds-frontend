@@ -5,8 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_KEY!
 );
 
 const BOOKMAKERS = ["betmgm", "draftkings", "fanduel", "caesars"];
