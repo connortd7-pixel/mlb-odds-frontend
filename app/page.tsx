@@ -468,7 +468,8 @@ export default function Home() {
 
         .juice { color: #3a5468; }
 
-        .odds-table td.best {
+        .odds-table td.best,
+        .odds-table span.best {
           color: #34d399 !important;
           font-weight: 500;
         }
