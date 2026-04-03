@@ -1,65 +1,495 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+import Link from "next/link";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_KEY
+);
+
+const BOOKMAKERS = ["betmgm", "draftkings", "fanduel", "caesars"];
+
+const BOOKMAKER_LABELS = {
+  betmgm: "BetMGM",
+  draftkings: "DraftKings",
+  fanduel: "FanDuel",
+  caesars: "Caesars",
+};
+
+function formatOdds(val) {
+  if (val == null) return "—";
+  return val > 0 ? `+${val}` : `${val}`;
+}
+
+function formatSpread(val) {
+  if (val == null) return "—";
+  return val > 0 ? `+${val}` : `${val}`;
+}
+
+function formatTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+    hour12: true,
+  });
+}
+
+function getBestML(oddsMap, team) {
+  let best = null;
+  for (const book of BOOKMAKERS) {
+    const val = oddsMap[book]?.[team === "home" ? "ml_home" : "ml_away"];
+    if (val != null && (best === null || val > best)) best = val;
+  }
+  return best;
+}
+
+function getBestSpread(oddsMap, side) {
+  // Best spread price for a given side
+  let best = null;
+  for (const book of BOOKMAKERS) {
+    const val =
+      oddsMap[book]?.[
+        side === "home" ? "spread_home_price" : "spread_away_price"
+      ];
+    if (val != null && (best === null || val > best)) best = val;
+  }
+  return best;
+}
 
 export default function Home() {
+  const [games, setGames] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeGame, setActiveGame] = useState(null);
+
+  useEffect(() => {
+    async function load() {
+      const today = new Date().toISOString().split("T")[0];
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+
+      const { data: gamesData } = await supabase
+        .from("games")
+        .select("*")
+        .gte("commence_time", `${today}T00:00:00Z`)
+        .lte("commence_time", `${tomorrow}T03:59:59Z`)
+        .order("commence_time");
+
+      if (!gamesData || gamesData.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      const gameIds = gamesData.map((g) => g.id);
+      const { data: oddsData } = await supabase
+        .from("odds")
+        .select("*")
+        .in("game_id", gameIds);
+
+      // Build a map: game_id -> { bookmaker -> odds row }
+      const oddsMap = {};
+      for (const row of oddsData || []) {
+        if (!oddsMap[row.game_id]) oddsMap[row.game_id] = {};
+        oddsMap[row.game_id][row.bookmaker] = row;
+      }
+
+      setGames(gamesData.map((g) => ({ ...g, odds: oddsMap[g.id] || {} })));
+      setLoading(false);
+    }
+    load();
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="app">
+      <header className="header">
+        <div className="header-inner">
+          <div className="logo">
+            <span className="logo-icon">⚾</span>
+            <span className="logo-text">LINEWATCH</span>
+            <span className="divider">|</span>
+            <Link href="/results" className="nav-link">Yesterday →</Link>
+          </div>
+          <div className="header-meta">
+            <span className="date-badge">
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      <div className="content">
+        <div className="section-header">
+          <h2 className="section-title">Today's Games</h2>
+          <span className="game-count">{games.length} games</span>
         </div>
-      </main>
-    </div>
+
+        {loading ? (
+          <div className="loading">
+            <div className="spinner" />
+            <span>Fetching lines...</span>
+          </div>
+        ) : games.length === 0 ? (
+          <div className="empty">No games scheduled today.</div>
+        ) : (
+          <div className="games-list">
+            {games.map((game) => {
+              const isOpen = activeGame === game.id;
+              const bestHomeML = getBestML(game.odds, "home");
+              const bestAwayML = getBestML(game.odds, "away");
+              const bestHomeSpread = getBestSpread(game.odds, "home");
+              const bestAwaySpread = getBestSpread(game.odds, "away");
+
+              return (
+                <div key={game.id} className={`game-card ${isOpen ? "open" : ""}`}>
+                  {/* Game Header */}
+                  <div
+                    className="game-header"
+                    onClick={() =>
+                      setActiveGame(isOpen ? null : game.id)
+                    }
+                  >
+                    <div className="game-time">{formatTime(game.commence_time)}</div>
+
+                    <div className="matchup">
+                      <div className="team away-team">
+                        <span className="team-name">{game.away_team}</span>
+                        <span className={`ml-pill ${bestAwayML > 0 ? "underdog" : "favorite"}`}>
+                          {formatOdds(bestAwayML)}
+                        </span>
+                      </div>
+                      <div className="at-sign">@</div>
+                      <div className="team home-team">
+                        <span className="team-name">{game.home_team}</span>
+                        <span className={`ml-pill ${bestHomeML > 0 ? "underdog" : "favorite"}`}>
+                          {formatOdds(bestHomeML)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="expand-icon">{isOpen ? "▲" : "▼"}</div>
+                  </div>
+
+                  {/* Expanded Odds Table */}
+                  {isOpen && (
+                    <div className="odds-table-wrap">
+                      <table className="odds-table">
+                        <thead>
+                          <tr>
+                            <th>Book</th>
+                            <th>Away Spread</th>
+                            <th>Home Spread</th>
+                            <th>Total</th>
+                            <th>Away ML</th>
+                            <th>Home ML</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {BOOKMAKERS.map((book) => {
+                            const o = game.odds[book];
+                            if (!o) return null;
+                            return (
+                              <tr key={book}>
+                                <td className="book-name">
+                                  {BOOKMAKER_LABELS[book]}
+                                </td>
+                                <td
+                                  className={
+                                    o.spread_away_price === bestAwaySpread
+                                      ? "best"
+                                      : ""
+                                  }
+                                >
+                                  {formatSpread(o.spread_away)}{" "}
+                                  <span className="juice">
+                                    ({formatOdds(o.spread_away_price)})
+                                  </span>
+                                </td>
+                                <td
+                                  className={
+                                    o.spread_home_price === bestHomeSpread
+                                      ? "best"
+                                      : ""
+                                  }
+                                >
+                                  {formatSpread(o.spread_home)}{" "}
+                                  <span className="juice">
+                                    ({formatOdds(o.spread_home_price)})
+                                  </span>
+                                </td>
+                                <td>
+                                  O{o.total_over}{" "}
+                                  <span className="juice">
+                                    ({formatOdds(o.total_over_price)})
+                                  </span>{" "}
+                                  / U{o.total_under}{" "}
+                                  <span className="juice">
+                                    ({formatOdds(o.total_under_price)})
+                                  </span>
+                                </td>
+                                <td
+                                  className={
+                                    o.ml_away === bestAwayML ? "best" : ""
+                                  }
+                                >
+                                  {formatOdds(o.ml_away)}
+                                </td>
+                                <td
+                                  className={
+                                    o.ml_home === bestHomeML ? "best" : ""
+                                  }
+                                >
+                                  {formatOdds(o.ml_home)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+          background: #080c10;
+          color: #e2e8f0;
+          font-family: 'DM Mono', monospace;
+          min-height: 100vh;
+        }
+
+        .app {
+          max-width: 960px;
+          margin: 0 auto;
+          padding: 0 16px 60px;
+        }
+
+        /* Header */
+        .header {
+          border-bottom: 1px solid #1e2a38;
+          padding: 24px 0 20px;
+          margin-bottom: 32px;
+        }
+        .header-inner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .logo {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .logo-icon { font-size: 22px; }
+        .logo-text {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 28px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          color: #f0f4f8;
+        }
+        .date-badge {
+          font-size: 11px;
+          color: #4a6080;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        /* Section */
+        .section-header {
+          display: flex;
+          align-items: baseline;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        .section-title {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          color: #cbd5e1;
+          text-transform: uppercase;
+        }
+        .game-count {
+          font-size: 11px;
+          color: #3a5068;
+        }
+
+        /* Game Card */
+        .game-card {
+          background: #0d1520;
+          border: 1px solid #1a2535;
+          border-radius: 6px;
+          margin-bottom: 8px;
+          overflow: hidden;
+          transition: border-color 0.2s;
+        }
+        .game-card:hover { border-color: #2a3f58; }
+        .game-card.open { border-color: #1e90ff44; }
+
+        .game-header {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 16px 20px;
+          cursor: pointer;
+          user-select: none;
+        }
+
+        .game-time {
+          font-size: 11px;
+          color: #3d5a78;
+          min-width: 64px;
+          letter-spacing: 0.04em;
+        }
+
+        .matchup {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .team {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex: 1;
+        }
+        .away-team { justify-content: flex-end; }
+        .home-team { justify-content: flex-start; }
+
+        .team-name {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 17px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          color: #c8d8e8;
+        }
+
+        .at-sign {
+          font-size: 12px;
+          color: #2a3f58;
+          flex-shrink: 0;
+        }
+
+        .ml-pill {
+          font-size: 11px;
+          font-family: 'DM Mono', monospace;
+          padding: 2px 7px;
+          border-radius: 3px;
+          letter-spacing: 0.02em;
+        }
+        .ml-pill.favorite {
+          background: #0a1f35;
+          color: #4a8fc4;
+          border: 1px solid #1a3a58;
+        }
+        .ml-pill.underdog {
+          background: #1a0e05;
+          color: #c47a3a;
+          border: 1px solid #3a2010;
+        }
+
+        .expand-icon {
+          font-size: 10px;
+          color: #2a3f58;
+          min-width: 16px;
+          text-align: right;
+        }
+
+        /* Odds Table */
+        .odds-table-wrap {
+          overflow-x: auto;
+          border-top: 1px solid #1a2535;
+        }
+
+        .odds-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 12px;
+        }
+
+        .odds-table thead tr {
+          background: #080c10;
+        }
+
+        .odds-table th {
+          padding: 10px 14px;
+          text-align: left;
+          color: #2d4a64;
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          border-bottom: 1px solid #121e2c;
+        }
+
+        .odds-table td {
+          padding: 12px 14px;
+          border-bottom: 1px solid #0f1a26;
+          color: #8aa4bc;
+          white-space: nowrap;
+        }
+
+        .odds-table tbody tr:last-child td { border-bottom: none; }
+        .odds-table tbody tr:hover td { background: #0f1c2a; }
+
+        .book-name {
+          font-family: 'Barlow Condensed', sans-serif;
+          font-size: 14px !important;
+          font-weight: 600;
+          color: #5a7a94 !important;
+          letter-spacing: 0.04em;
+        }
+
+        .juice { color: #3a5468; }
+
+        .odds-table td.best {
+          color: #34d399 !important;
+          font-weight: 500;
+        }
+
+        /* Loading */
+        .loading {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          color: #2d4a64;
+          font-size: 13px;
+          padding: 40px 0;
+        }
+        .spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid #1a2c40;
+          border-top-color: #1e90ff;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .empty {
+          color: #2d4a64;
+          font-size: 13px;
+          padding: 40px 0;
+        }
+      `}</style>
+    </main>
   );
 }
