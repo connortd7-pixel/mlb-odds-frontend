@@ -11,11 +11,32 @@ const supabase = createClient(
 
 const BOOKMAKERS = ["betmgm", "draftkings", "fanduel", "caesars"];
 
-const BOOKMAKER_LABELS = {
+const BOOKMAKER_LABELS: Record<string, string> = {
   betmgm: "BetMGM",
   draftkings: "DraftKings",
   fanduel: "FanDuel",
   caesars: "Caesars",
+};
+
+type OddsRow = {
+  ml_home: number | null;
+  ml_away: number | null;
+  spread_home: number | null;
+  spread_home_price: number | null;
+  spread_away: number | null;
+  spread_away_price: number | null;
+  total_over: number | null;
+  total_over_price: number | null;
+  total_under: number | null;
+  total_under_price: number | null;
+};
+
+type Game = {
+  id: string;
+  commence_time: string;
+  home_team: string;
+  away_team: string;
+  odds: Record<string, OddsRow>;
 };
 
 function formatOdds(val: number | null | undefined) {
@@ -39,7 +60,7 @@ function formatTime(iso: string | null | undefined) {
   });
 }
 
-function getBestML(oddsMap: Record<string, Record<string, number>>, team: string) {
+function getBestML(oddsMap: Record<string, OddsRow>, team: string) {
   let best: number | null = null;
   for (const book of BOOKMAKERS) {
     const val = oddsMap[book]?.[team === "home" ? "ml_home" : "ml_away"];
@@ -48,8 +69,7 @@ function getBestML(oddsMap: Record<string, Record<string, number>>, team: string
   return best;
 }
 
-function getBestSpread(oddsMap: Record<string, Record<string, number>>, side: string) {
-  // Best spread price for a given side
+function getBestSpread(oddsMap: Record<string, OddsRow>, side: string) {
   let best: number | null = null;
   for (const book of BOOKMAKERS) {
     const val =
@@ -62,9 +82,9 @@ function getBestSpread(oddsMap: Record<string, Record<string, number>>, side: st
 }
 
 export default function Home() {
-  const [games, setGames] = useState([]);
+  const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeGame, setActiveGame] = useState(null);
+  const [activeGame, setActiveGame] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -90,7 +110,7 @@ export default function Home() {
         .in("game_id", gameIds);
 
       // Build a map: game_id -> { bookmaker -> odds row }
-      const oddsMap: Record<string, Record<string, unknown>> = {};
+      const oddsMap: Record<string, Record<string, OddsRow>> = {};
       for (const row of oddsData || []) {
         if (!oddsMap[row.game_id]) oddsMap[row.game_id] = {};
         oddsMap[row.game_id][row.bookmaker] = row;
@@ -126,7 +146,7 @@ export default function Home() {
 
       <div className="content">
         <div className="section-header">
-          <h2 className="section-title">Today's Games</h2>
+          <h2 className="section-title">Today&apos;s Games</h2>
           <span className="game-count">{games.length} games</span>
         </div>
 
@@ -160,14 +180,14 @@ export default function Home() {
                     <div className="matchup">
                       <div className="team away-team">
                         <span className="team-name">{game.away_team}</span>
-                        <span className={`ml-pill ${bestAwayML > 0 ? "underdog" : "favorite"}`}>
+                        <span className={`ml-pill ${bestAwayML != null && bestAwayML > 0 ? "underdog" : "favorite"}`}>
                           {formatOdds(bestAwayML)}
                         </span>
                       </div>
                       <div className="at-sign">@</div>
                       <div className="team home-team">
                         <span className="team-name">{game.home_team}</span>
-                        <span className={`ml-pill ${bestHomeML > 0 ? "underdog" : "favorite"}`}>
+                        <span className={`ml-pill ${bestHomeML != null && bestHomeML > 0 ? "underdog" : "favorite"}`}>
                           {formatOdds(bestHomeML)}
                         </span>
                       </div>

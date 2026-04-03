@@ -9,6 +9,32 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_KEY!
 );
 
+type GameResult = {
+  game_id: string;
+  home_score: number;
+  away_score: number;
+  home_covered: boolean | null;
+  away_covered: boolean | null;
+  went_over: boolean | null;
+  went_under: boolean | null;
+};
+
+type GameOdds = {
+  game_id: string;
+  bookmaker: string;
+  spread_home: number | null;
+  total_over: number | null;
+};
+
+type Game = {
+  id: string;
+  commence_time: string;
+  home_team: string;
+  away_team: string;
+  result: GameResult | null;
+  odds: GameOdds | null;
+};
+
 function formatDate(daysAgo = 1) {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
@@ -29,12 +55,11 @@ function HitBadge({ hit, label }: { hit: boolean | null | undefined; label: stri
 }
 
 export default function Results() {
-  const [games, setGames] = useState([]);
+  const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      // Get yesterday's date range in UTC covering full ET day
       const now = new Date();
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
@@ -44,7 +69,6 @@ export default function Results() {
       const startStr = twoDaysAgo.toISOString().split("T")[0] + "T00:00:00Z";
       const endStr = yesterday.toISOString().split("T")[0] + "T23:59:59Z";
 
-      // Fetch yesterday's games
       const { data: gamesData } = await supabase
         .from("games")
         .select("*")
@@ -59,25 +83,23 @@ export default function Results() {
 
       const gameIds = gamesData.map((g) => g.id);
 
-      // Fetch results
       const { data: resultsData } = await supabase
         .from("results")
         .select("*")
         .in("game_id", gameIds);
 
-      // Fetch odds (for spread context)
       const { data: oddsData } = await supabase
         .from("odds")
         .select("game_id, bookmaker, spread_home, total_over")
         .in("game_id", gameIds)
         .limit(1);
 
-      const resultsMap = {};
+      const resultsMap: Record<string, GameResult> = {};
       for (const r of resultsData || []) {
         resultsMap[r.game_id] = r;
       }
 
-      const oddsMap = {};
+      const oddsMap: Record<string, GameOdds> = {};
       for (const o of oddsData || []) {
         if (!oddsMap[o.game_id]) oddsMap[o.game_id] = o;
       }
@@ -115,7 +137,7 @@ export default function Results() {
 
       <div className="content">
         <div className="section-header">
-          <h2 className="section-title">Yesterday's Results</h2>
+          <h2 className="section-title">Yesterday&apos;s Results</h2>
           <span className="game-count">{gamesWithResults.length} games</span>
         </div>
 
@@ -129,7 +151,7 @@ export default function Results() {
         ) : (
           <div className="games-list">
             {gamesWithResults.map((game) => {
-              const r = game.result;
+              const r = game.result!;
               const o = game.odds;
               const awayWon = r.away_score > r.home_score;
               const homeWon = r.home_score > r.away_score;
@@ -168,11 +190,11 @@ export default function Results() {
                         <>
                           <HitBadge
                             hit={r.away_covered}
-                            label={`Away covered (${o.spread_home > 0 ? "+" : ""}${-o.spread_home})`}
+                            label={`Away covered (${o.spread_home != null && o.spread_home > 0 ? "+" : ""}${o.spread_home != null ? -o.spread_home : ""})`}
                           />
                           <HitBadge
                             hit={r.home_covered}
-                            label={`Home covered (${o.spread_home > 0 ? "+" : ""}${o.spread_home})`}
+                            label={`Home covered (${o.spread_home != null && o.spread_home > 0 ? "+" : ""}${o.spread_home ?? ""})`}
                           />
                           <HitBadge
                             hit={r.went_over}
