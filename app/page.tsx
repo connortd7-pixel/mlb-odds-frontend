@@ -90,7 +90,7 @@ export default function Home() {
         .in("game_id", gameIds);
 
       // Build a map: game_id -> { bookmaker -> odds row }
-      const oddsMap = {};
+      const oddsMap: Record<string, Record<string, unknown>> = {};
       for (const row of oddsData || []) {
         if (!oddsMap[row.game_id]) oddsMap[row.game_id] = {};
         oddsMap[row.game_id][row.bookmaker] = row;
