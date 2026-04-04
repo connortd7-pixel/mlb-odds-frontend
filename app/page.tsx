@@ -94,7 +94,7 @@ export default function Home() {
       const { data: gamesData } = await supabase
         .from("games")
         .select("*")
-        .gte("commence_time", `${today}T00:00:00Z`)
+        .gte("commence_time", `${today}T04:00:00Z`)
         .lte("commence_time", `${tomorrow}T03:59:59Z`)
         .order("commence_time");
 
