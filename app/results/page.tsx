@@ -15,8 +15,6 @@ type GameResult = {
   away_score: number;
   home_covered: boolean | null;
   away_covered: boolean | null;
-  went_over: boolean | null;
-  went_under: boolean | null;
 };
 
 type GameOdds = {
@@ -60,20 +58,24 @@ export default function Results() {
 
   useEffect(() => {
     async function load() {
+      // Use ET midnight (04:00 UTC) as day boundaries to capture late-night games
       const now = new Date();
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const twoDaysAgo = new Date(now);
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      const todayET = new Date(now);
+      todayET.setUTCHours(4, 0, 0, 0);
+      // If we haven't reached 4 AM UTC yet today, shift back one day
+      if (now < todayET) todayET.setUTCDate(todayET.getUTCDate() - 1);
 
-      const startStr = twoDaysAgo.toISOString().split("T")[0] + "T00:00:00Z";
-      const endStr = yesterday.toISOString().split("T")[0] + "T23:59:59Z";
+      const yesterdayStart = new Date(todayET);
+      yesterdayStart.setUTCDate(yesterdayStart.getUTCDate() - 1);
+
+      const startStr = yesterdayStart.toISOString();
+      const endStr = todayET.toISOString();
 
       const { data: gamesData } = await supabase
         .from("games")
         .select("*")
         .gte("commence_time", startStr)
-        .lte("commence_time", endStr)
+        .lt("commence_time", endStr)
         .order("commence_time");
 
       if (!gamesData || gamesData.length === 0) {
@@ -91,8 +93,7 @@ export default function Results() {
       const { data: oddsData } = await supabase
         .from("odds")
         .select("game_id, bookmaker, spread_home, total_over")
-        .in("game_id", gameIds)
-        .limit(1);
+        .in("game_id", gameIds);
 
       const resultsMap: Record<string, GameResult> = {};
       for (const r of resultsData || []) {
@@ -156,6 +157,13 @@ export default function Results() {
               const awayWon = r.away_score > r.home_score;
               const homeWon = r.home_score > r.away_score;
 
+              const wentOver = o?.total_over != null
+                ? (r.home_score + r.away_score) > o.total_over
+                : null;
+              const wentUnder = o?.total_over != null
+                ? (r.home_score + r.away_score) < o.total_over
+                : null;
+
               return (
                 <div key={game.id} className="game-card">
                   <div className="game-row">
@@ -186,26 +194,22 @@ export default function Results() {
 
                     {/* Badges */}
                     <div className="badges">
-                      {o && (
-                        <>
-                          <HitBadge
-                            hit={r.away_covered}
-                            label={`Away covered (${o.spread_home != null && o.spread_home > 0 ? "+" : ""}${o.spread_home != null ? -o.spread_home : ""})`}
-                          />
-                          <HitBadge
-                            hit={r.home_covered}
-                            label={`Home covered (${o.spread_home != null && o.spread_home > 0 ? "+" : ""}${o.spread_home ?? ""})`}
-                          />
-                          <HitBadge
-                            hit={r.went_over}
-                            label={`Over ${o.total_over}`}
-                          />
-                          <HitBadge
-                            hit={r.went_under}
-                            label={`Under ${o.total_over}`}
-                          />
-                        </>
-                      )}
+                      <HitBadge
+                        hit={r.away_covered}
+                        label={`Away covered (${o?.spread_home != null && o.spread_home > 0 ? "+" : ""}${o?.spread_home != null ? -o.spread_home : ""})`}
+                      />
+                      <HitBadge
+                        hit={r.home_covered}
+                        label={`Home covered (${o?.spread_home != null && o.spread_home > 0 ? "+" : ""}${o?.spread_home ?? ""})`}
+                      />
+                      <HitBadge
+                        hit={wentOver}
+                        label={`Over ${o?.total_over ?? ""}`}
+                      />
+                      <HitBadge
+                        hit={wentUnder}
+                        label={`Under ${o?.total_over ?? ""}`}
+                      />
                     </div>
                   </div>
                 </div>
