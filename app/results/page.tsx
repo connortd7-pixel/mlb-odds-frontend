@@ -32,13 +32,18 @@ type Game = {
   odds: GameOdds | null;
 };
 
-function formatDate(daysAgo = 1) {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return d.toLocaleDateString("en-US", {
+function formatYesterday() {
+  const now = new Date();
+  const todayET = new Date(now);
+  todayET.setUTCHours(4, 0, 0, 0);
+  if (now < todayET) todayET.setUTCDate(todayET.getUTCDate() - 1);
+  const yesterday = new Date(todayET);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  return yesterday.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
+    timeZone: "America/New_York",
   });
 }
 
@@ -131,7 +136,7 @@ export default function Results() {
             <span className="logo-text">LINEWATCH</span>
           </div>
           <div className="header-meta">
-            <span className="date-badge">{formatDate(1)}</span>
+            <span className="date-badge">{formatYesterday()}</span>
           </div>
         </div>
       </header>
