@@ -13,8 +13,6 @@ type GameResult = {
   game_id: string;
   home_score: number;
   away_score: number;
-  home_covered: boolean | null;
-  away_covered: boolean | null;
 };
 
 type GameOdds = {
@@ -157,12 +155,13 @@ export default function Results() {
               const awayWon = r.away_score > r.home_score;
               const homeWon = r.home_score > r.away_score;
 
-              const wentOver = o?.total_over != null
-                ? (r.home_score + r.away_score) > o.total_over
+              const totalRuns = r.home_score + r.away_score;
+              const wentOver = o?.total_over != null ? totalRuns > o.total_over : null;
+
+              const homeCovered = o?.spread_home != null
+                ? (r.home_score + o.spread_home) > r.away_score
                 : null;
-              const wentUnder = o?.total_over != null
-                ? (r.home_score + r.away_score) < o.total_over
-                : null;
+              const awayCovered = homeCovered != null ? !homeCovered : null;
 
               return (
                 <div key={game.id} className="game-card">
@@ -195,20 +194,16 @@ export default function Results() {
                     {/* Badges */}
                     <div className="badges">
                       <HitBadge
-                        hit={r.away_covered}
-                        label={`Away covered (${o?.spread_home != null && o.spread_home > 0 ? "+" : ""}${o?.spread_home != null ? -o.spread_home : ""})`}
+                        hit={awayCovered}
+                        label={`Away covered (${o?.spread_home != null ? ((-o.spread_home) > 0 ? "+" : "") + (-o.spread_home) : ""})`}
                       />
                       <HitBadge
-                        hit={r.home_covered}
-                        label={`Home covered (${o?.spread_home != null && o.spread_home > 0 ? "+" : ""}${o?.spread_home ?? ""})`}
+                        hit={homeCovered}
+                        label={`Home covered (${o?.spread_home != null ? (o.spread_home > 0 ? "+" : "") + o.spread_home : ""})`}
                       />
                       <HitBadge
                         hit={wentOver}
-                        label={`Over ${o?.total_over ?? ""}`}
-                      />
-                      <HitBadge
-                        hit={wentUnder}
-                        label={`Under ${o?.total_over ?? ""}`}
+                        label={`${wentOver ? "Over" : "Under"} ${o?.total_over ?? ""} (${totalRuns})`}
                       />
                     </div>
                   </div>
