@@ -27,6 +27,7 @@ type Game = {
   commence_time: string;
   home_team: string;
   away_team: string;
+  status: string | null;
   result: GameResult | null;
   odds: GameOdds | null;
 };
@@ -115,8 +116,9 @@ export default function Results() {
     load();
   }, []);
 
-  const gamesWithResults = games.filter((g) => g.result);
-  const gamesWithoutResults = games.filter((g) => !g.result);
+  const gamesWithResults = games.filter((g) => g.status === "final" || (g.status == null && g.result));
+  const postponedGames = games.filter((g) => g.status === "postponed");
+  const pendingGames = games.filter((g) => g.status !== "final" && g.status !== "postponed" && !(g.status == null && g.result));
 
   return (
     <main className="app">
@@ -213,15 +215,38 @@ export default function Results() {
           </div>
         )}
 
+        {/* Postponed games */}
+        {postponedGames.length > 0 && (
+          <>
+            <div className="section-header" style={{ marginTop: "32px" }}>
+              <h2 className="section-title">Postponed</h2>
+              <span className="game-count">{postponedGames.length} games</span>
+            </div>
+            <div className="games-list">
+              {postponedGames.map((game) => (
+                <div key={game.id} className="game-card pending">
+                  <div className="game-row">
+                    <div className="matchup">
+                      <span className="team-name loser">{game.away_team}</span>
+                      <span className="score-sep pending-label">PPD</span>
+                      <span className="team-name loser">{game.home_team}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         {/* Games with no results yet */}
-        {gamesWithoutResults.length > 0 && (
+        {pendingGames.length > 0 && (
           <>
             <div className="section-header" style={{ marginTop: "32px" }}>
               <h2 className="section-title">Pending Results</h2>
-              <span className="game-count">{gamesWithoutResults.length} games</span>
+              <span className="game-count">{pendingGames.length} games</span>
             </div>
             <div className="games-list">
-              {gamesWithoutResults.map((game) => (
+              {pendingGames.map((game) => (
                 <div key={game.id} className="game-card pending">
                   <div className="game-row">
                     <div className="matchup">
