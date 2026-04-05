@@ -93,7 +93,8 @@ export default function Results() {
       const { data: resultsData } = await supabase
         .from("results")
         .select("*")
-        .in("game_id", gameIds);
+        .in("game_id", gameIds)
+        .order("recorded_at", { ascending: false });
 
       const { data: oddsData } = await supabase
         .from("odds")
@@ -102,7 +103,7 @@ export default function Results() {
 
       const resultsMap: Record<string, GameResult> = {};
       for (const r of resultsData || []) {
-        resultsMap[r.game_id] = r;
+        if (!resultsMap[r.game_id]) resultsMap[r.game_id] = r;
       }
 
       const oddsMap: Record<string, GameOdds> = {};
