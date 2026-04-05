@@ -28,6 +28,7 @@ type Game = {
   commence_time: string;
   home_team: string;
   away_team: string;
+  status: string | null;
   result: GameResult | null;
   odds: GameOdds | null;
 };
@@ -121,9 +122,12 @@ export default function Results() {
     load();
   }, []);
 
-  const gamesWithResults = games.filter((g) => g.result?.status === "final" || (g.result != null && g.result.status == null));
-  const postponedGames = games.filter((g) => g.result?.status === "postponed");
-  const pendingGames = games.filter((g) => !g.result || (g.result.status !== "final" && g.result.status !== "postponed" && g.result.status != null));
+  const isPostponed = (g: Game) => g.status === "postponed" || g.result?.status === "postponed";
+  const isFinal = (g: Game) => g.result?.status === "final" || (g.result != null && g.result.status == null);
+
+  const gamesWithResults = games.filter(isFinal);
+  const postponedGames = games.filter((g) => !isFinal(g) && isPostponed(g));
+  const pendingGames = games.filter((g) => !isFinal(g) && !isPostponed(g));
 
   return (
     <main className="app">
