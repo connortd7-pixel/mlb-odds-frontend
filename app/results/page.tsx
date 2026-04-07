@@ -139,6 +139,8 @@ export default function Results() {
             <span className="divider">|</span>
             <span className="logo-icon">⚾</span>
             <span className="logo-text">LINEWATCH</span>
+            <span className="divider">|</span>
+            <Link href="/dashboard" className="back-link">Dashboard →</Link>
           </div>
           <div className="header-meta">
             <span className="date-badge">{formatYesterday()}</span>

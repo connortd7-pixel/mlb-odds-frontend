@@ -131,6 +131,8 @@ export default function Home() {
             <span className="logo-text">LINEWATCH</span>
             <span className="divider">|</span>
             <Link href="/results" className="nav-link">Yesterday →</Link>
+            <span className="divider">|</span>
+            <Link href="/dashboard" className="nav-link">Dashboard →</Link>
           </div>
           <div className="header-meta">
             <span className="date-badge">
