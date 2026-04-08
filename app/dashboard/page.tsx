@@ -27,11 +27,12 @@ type OddsRow = {
 type BetStats = {
   wins: number;
   losses: number;
+  pushes: number;
   pnl: number;
 };
 
 function initStats(): BetStats {
-  return { wins: 0, losses: 0, pnl: 0 };
+  return { wins: 0, losses: 0, pushes: 0, pnl: 0 };
 }
 
 function calcProfit(odds: number, won: boolean): number {
@@ -57,15 +58,30 @@ function recordBet(stats: BetStats, won: boolean, odds: number | null): void {
   stats.pnl += calcProfit(odds, won);
 }
 
+function recordPush(stats: BetStats): void {
+  stats.pushes++;
+}
+
 function winRate(stats: BetStats): number {
   const total = stats.wins + stats.losses;
   if (total === 0) return 0;
   return (stats.wins / total) * 100;
 }
 
+function roi(stats: BetStats): number {
+  const totalBets = stats.wins + stats.losses + stats.pushes;
+  if (totalBets === 0) return 0;
+  return (stats.pnl / (totalBets * 100)) * 100;
+}
+
 function formatPnL(pnl: number): string {
   const abs = Math.abs(Math.round(pnl));
   return pnl >= 0 ? `+$${abs}` : `-$${abs}`;
+}
+
+function formatRoi(r: number): string {
+  const abs = Math.abs(r).toFixed(1);
+  return r >= 0 ? `+${abs}%` : `-${abs}%`;
 }
 
 type AllStats = {
@@ -90,9 +106,12 @@ function StatCard({
   note?: string;
 }) {
   const total = stats.wins + stats.losses;
+  const totalWithPushes = total + stats.pushes;
   const rate = winRate(stats);
+  const roiVal = roi(stats);
   const pnl = stats.pnl;
   const pnlPositive = pnl >= 0;
+  const roiPositive = roiVal >= 0;
 
   // Color the win rate based on profitability threshold (~52.4% breaks even at -110)
   const rateColor =
@@ -102,7 +121,7 @@ function StatCard({
     <div className="stat-card">
       <div className="card-top">
         <span className="card-label">{label}</span>
-        <span className="card-count">{total} bets</span>
+        <span className="card-count">{totalWithPushes} bets{stats.pushes > 0 ? `, ${stats.pushes}p` : ""}</span>
       </div>
       <div className="card-rate" style={{ color: rateColor }}>
         {total === 0 ? "—" : `${rate.toFixed(1)}%`}
@@ -113,12 +132,14 @@ function StatCard({
         <span className="card-record">
           {stats.wins}–{stats.losses}
         </span>
-        <span
-          className="card-pnl"
-          style={{ color: pnlPositive ? "#34d399" : "#f87171" }}
-        >
-          {total === 0 ? "—" : formatPnL(pnl)}
-        </span>
+        <div className="card-right">
+          <span className="card-pnl" style={{ color: pnlPositive ? "#34d399" : "#f87171" }}>
+            {total === 0 ? "—" : formatPnL(pnl)}
+          </span>
+          <span className="card-roi" style={{ color: roiPositive ? "#34d399" : "#f87171" }}>
+            {totalWithPushes === 0 ? "" : formatRoi(roiVal)}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -222,7 +243,10 @@ export default function Dashboard() {
         // --- Over / Under ---
         if (totalLine != null) {
           const margin = totalRuns - totalLine;
-          if (margin !== 0) {
+          if (margin === 0) {
+            recordPush(over);
+            recordPush(under);
+          } else {
             recordBet(over, margin > 0, bestOverPrice);
             recordBet(under, margin < 0, bestUnderPrice);
           }
@@ -248,15 +272,13 @@ export default function Dashboard() {
         // --- Home Spread / Away Spread ---
         if (spreadHomeLine != null) {
           const homeMargin = home_score + spreadHomeLine - away_score;
-          if (homeMargin !== 0) {
-            recordBet(homeSpread, homeMargin > 0, bestSpreadHomePrice);
-          }
+          if (homeMargin === 0) recordPush(homeSpread);
+          else recordBet(homeSpread, homeMargin > 0, bestSpreadHomePrice);
         }
         if (spreadAwayLine != null) {
           const awayMargin = away_score + spreadAwayLine - home_score;
-          if (awayMargin !== 0) {
-            recordBet(awaySpread, awayMargin > 0, bestSpreadAwayPrice);
-          }
+          if (awayMargin === 0) recordPush(awaySpread);
+          else recordBet(awaySpread, awayMargin > 0, bestSpreadAwayPrice);
         }
 
         // --- Away +1.5 (only games listed at that exact line) ---
@@ -485,10 +507,22 @@ export default function Dashboard() {
           letter-spacing: 0.02em;
         }
 
+        .card-right {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 2px;
+        }
+
         .card-pnl {
           font-family: 'Barlow Condensed', sans-serif;
           font-size: 18px;
           font-weight: 700;
+          letter-spacing: 0.04em;
+        }
+
+        .card-roi {
+          font-size: 10px;
           letter-spacing: 0.04em;
         }
 
