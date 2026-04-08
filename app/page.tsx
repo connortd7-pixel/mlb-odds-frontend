@@ -88,14 +88,20 @@ export default function Home() {
 
   useEffect(() => {
     async function load() {
-      const today = new Date().toISOString().split("T")[0];
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      // Compute today's ET day boundary (midnight ET = 04:00 UTC)
+      const now = new Date();
+      const todayET = new Date(now);
+      todayET.setUTCHours(4, 0, 0, 0);
+      if (now < todayET) todayET.setUTCDate(todayET.getUTCDate() - 1);
+
+      const tomorrowET = new Date(todayET);
+      tomorrowET.setUTCDate(tomorrowET.getUTCDate() + 1);
 
       const { data: gamesData } = await supabase
         .from("games")
         .select("*")
-        .gte("commence_time", `${today}T04:00:00Z`)
-        .lte("commence_time", `${tomorrow}T03:59:59Z`)
+        .gte("commence_time", todayET.toISOString())
+        .lt("commence_time", tomorrowET.toISOString())
         .order("commence_time");
 
       if (!gamesData || gamesData.length === 0) {
