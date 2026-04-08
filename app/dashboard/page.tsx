@@ -121,7 +121,7 @@ function StatCard({
     <div className="stat-card">
       <div className="card-top">
         <span className="card-label">{label}</span>
-        <span className="card-count">{totalWithPushes} bets{stats.pushes > 0 ? `, ${stats.pushes}p` : ""}</span>
+        <span className="card-count">{totalWithPushes} bets</span>
       </div>
       <div className="card-rate" style={{ color: rateColor }}>
         {total === 0 ? "—" : `${rate.toFixed(1)}%`}
@@ -130,7 +130,7 @@ function StatCard({
       {note && <div className="card-note">{note}</div>}
       <div className="card-bottom">
         <span className="card-record">
-          {stats.wins}–{stats.losses}
+          {stats.wins}–{stats.losses}{stats.pushes > 0 ? `–${stats.pushes}` : ""}
         </span>
         <div className="card-right">
           <span className="card-pnl" style={{ color: pnlPositive ? "#34d399" : "#f87171" }}>
