@@ -135,7 +135,7 @@ export default function Home() {
             <Link href="/dashboard" className="nav-link">Dashboard →</Link>
           </div>
           <div className="header-meta">
-            <span className="date-badge">
+            <span className="date-badge" suppressHydrationWarning>
               {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
                 month: "long",
