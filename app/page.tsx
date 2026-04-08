@@ -146,6 +146,7 @@ export default function Home() {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
+                timeZone: "America/New_York",
               })}
             </span>
           </div>
