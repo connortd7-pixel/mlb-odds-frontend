@@ -80,12 +80,19 @@ export default function Home() {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeGame, setActiveGame] = useState<string | null>(null);
+  const [todayLabel, setTodayLabel] = useState<string>("");
 
   useEffect(() => {
     async function load() {
       // Compute today's ET day boundary (midnight ET = 04:00 UTC)
       const now = new Date();
       const todayET = new Date(now);
+      setTodayLabel(now.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        timeZone: "America/New_York",
+      }));
       todayET.setUTCHours(4, 0, 0, 0);
       if (now < todayET) todayET.setUTCDate(todayET.getUTCDate() - 1);
 
@@ -136,14 +143,7 @@ export default function Home() {
             <Link href="/dashboard" className="nav-link">Dashboard →</Link>
           </div>
           <div className="header-meta">
-            <span className="date-badge" suppressHydrationWarning>
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-                timeZone: "America/New_York",
-              })}
-            </span>
+            <span className="date-badge">{todayLabel}</span>
           </div>
         </div>
       </header>
