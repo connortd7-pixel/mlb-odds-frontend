@@ -176,20 +176,27 @@ export default function Dashboard() {
 
       const gameIds = finalResults.map((r: { game_id: string }) => r.game_id);
 
-      // Fetch all odds for those games
-      const { data: oddsData, error: oddsErr } = await supabase
-        .from("odds")
-        .select(
-          "game_id, bookmaker, ml_home, ml_away, spread_home, spread_home_price, spread_away, spread_away_price, total_over, total_over_price, total_under, total_under_price"
-        )
-        .in("game_id", gameIds)
-        .limit(50000);
+      // Fetch all odds for those games, batching IDs to stay under URL length limits
+      const CHUNK = 400;
+      const oddsRows: OddsRow[] = [];
+      for (let i = 0; i < gameIds.length; i += CHUNK) {
+        const chunk = gameIds.slice(i, i + CHUNK);
+        const { data: chunkData, error: chunkErr } = await supabase
+          .from("odds")
+          .select(
+            "game_id, bookmaker, ml_home, ml_away, spread_home, spread_home_price, spread_away, spread_away_price, total_over, total_over_price, total_under, total_under_price"
+          )
+          .in("game_id", chunk)
+          .limit(50000);
 
-      if (oddsErr) {
-        setError("Failed to load odds.");
-        setLoading(false);
-        return;
+        if (chunkErr) {
+          setError("Failed to load odds.");
+          setLoading(false);
+          return;
+        }
+        if (chunkData) oddsRows.push(...chunkData);
       }
+      const oddsData = oddsRows;
 
       // Group odds by game_id
       const oddsMap: Record<string, OddsRow[]> = {};
